@@ -1,7 +1,7 @@
 targzstream
 ===========
 
-Version: 0.9.2
+Version: 1.0
 
 Summary
 -------
@@ -42,7 +42,7 @@ Example Usage
                                       uid=st.st_uid, gid=st.st_gid, mode=st.st_mode)
 
             # Copy the data.
-            with open(fname, 'rb') as fin
+            with open(fname, 'rb') as fin:
                 shutil.copyfileobj(fin, obj)
 
             # REMEMBER: close_gz_file() is required
@@ -57,7 +57,7 @@ TODO
   .. code:: python
 
     with tarball.gzstream(name=fname + '.gz', mtime=mtime, ...) as obj:
-        with open(fname, 'rb') as fin
+        with open(fname, 'rb') as fin:
             shutil.copyfileobj(fin, obj)
 
 - Have *add_gz_file* handle the result of an *os.stat*.  Eg:

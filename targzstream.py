@@ -41,7 +41,7 @@ Example Usage
                                       uid=st.st_uid, gid=st.st_gid, mode=st.st_mode)
 
             # Copy the data.
-            with open(fname, 'rb') as fin
+            with open(fname, 'rb') as fin:
                 shutil.copyfileobj(fin, obj)
 
             # REMEMBER: close_gz_file() is required
@@ -56,7 +56,7 @@ TODO
   .. code:: python
 
     with tarball.gzstream(name=fname + '.gz', mtime=mtime, ...) as obj:
-        with open(fname, 'rb') as fin
+        with open(fname, 'rb') as fin:
             shutil.copyfileobj(fin, obj)
 
 - Have *add_gz_file* handle the result of an *os.stat*.  Eg:
@@ -75,7 +75,7 @@ import time
 
 __version__ = "1.0"
 __author__ = "NVRAM (nvram@users.sourceforge.net)"
-__date__ = "Sun Apr 16 00:38:13 MDT 2017"
+__date__ = "Sun Apr 16 00:43:13 MDT 2017"
 __credits__ = "NVRAM"
 __descr__ = ('An extension to tarfile to allow adding compressed-on-the-fly files to ' +
              'a tarfile, allowing files too large to fit into memory or data that is ' +
