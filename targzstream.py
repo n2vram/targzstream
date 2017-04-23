@@ -64,7 +64,7 @@ TODO
   .. code:: python
 
     with tarball.gz_file(name=fname + '.gz', stat=os.stat(fname)) as obj:
-        with open(fname, 'rb') as fin
+        with open(fname, 'rb') as fin:
             shutil.copyfileobj(fin, obj)
 """
 import gzip
@@ -73,9 +73,9 @@ import sys
 import tarfile
 import time
 
-__version__ = "0.8"
+__version__ = "1.0"
 __author__ = "NVRAM (nvram@users.sourceforge.net)"
-__date__ = "Sat Apr 15 22:23:13 MDT 2017"
+__date__ = "Sun Apr 16 00:38:13 MDT 2017"
 __credits__ = "NVRAM"
 __descr__ = ('An extension to tarfile to allow adding compressed-on-the-fly files to ' +
              'a tarfile, allowing files too large to fit into memory or data that is ' +
@@ -136,7 +136,7 @@ class TarFile(tarfile.TarFile):
         self.fileobj.write(buff)
 
     def add_gz_file(self, name, mtime, **stats):
-        logging.info("Adding GZ file: %s", name)
+        logging.debug("Adding GZ file: %s", name)
         if self.__currinfo:
             self.close_gz_file()
         tinfo = tarfile.TarInfo(name=name)
@@ -149,13 +149,13 @@ class TarFile(tarfile.TarFile):
         self.__currinfo = tinfo
         self.__writeheader()
         self.__stream = GzipStream(name, self.fileobj, mtime=mtime)
-        logging.info("Wrote header(%s) between %04x - %04x", name, self.__location, self.fileobj.tell())
+        logging.debug("Wrote header(%s) between %04x - %04x", name, self.__location, self.fileobj.tell())
         return self.__stream
 
     def close_gz_file(self):
         print("Entering TarFile.close_gz_file() ....")
         self.__currinfo.size = self.__stream.close()
-        logging.info("Closing GZ file: %s (%d)", self.__currinfo.name, self.__currinfo.size)
+        logging.debug("Closing GZ file: %s (%d)", self.__currinfo.name, self.__currinfo.size)
         end = self.fileobj.tell()
         _, extra = divmod(end, tarfile.BLOCKSIZE)
         padding = tarfile.BLOCKSIZE - extra

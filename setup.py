@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from distutils.core import setup
+import os.path
 import re
 import sys
 
@@ -60,5 +61,10 @@ def do_setup(readme):
     )
 
 
-readme = fix_readme(infile='README.in', outfile='README.rst')
+
+if os.path.isfile('README.in'):
+    readme = fix_readme(infile='README.in', outfile='README.rst')
+else:
+    readme = open('README.rst').read()
+
 do_setup(readme)

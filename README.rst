@@ -1,7 +1,7 @@
 targzstream
 ===========
 
-Version: 0.8
+Version: 0.9.2
 
 Summary
 -------
@@ -65,6 +65,6 @@ TODO
   .. code:: python
 
     with tarball.gz_file(name=fname + '.gz', stat=os.stat(fname)) as obj:
-        with open(fname, 'rb') as fin
+        with open(fname, 'rb') as fin:
             shutil.copyfileobj(fin, obj)
 
