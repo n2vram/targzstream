@@ -7,6 +7,7 @@ import sys
 import targzstream
 
 MODULE = targzstream
+
 NAME = MODULE.__name__
 VERSION =  MODULE.__version__
 DOCSTRING = MODULE.__doc__
@@ -53,8 +54,7 @@ def do_setup(readme):
             'Topic :: Utilities',
         ],
         keywords=['tarfile', 'gzip', 'streaming'],
-
-        py_modules=[NAME],
+        py_modules=[NAME, 'tests'],
         download_url=(URL + '/archive/' + VERSION),
         platforms=['any'],
     )
