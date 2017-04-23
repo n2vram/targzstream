@@ -55,10 +55,10 @@ def do_setup(readme):
         keywords=['tarfile', 'gzip', 'streaming'],
 
         py_modules=[NAME],
-        download_url=(url + '/archive/' + VERSION),
+        download_url=(URL + '/archive/' + VERSION),
         platforms=['any'],
     )
 
 
 readme = fix_readme(infile='README.in', outfile='README.rst')
-# do_setup(contents)
+do_setup(readme)
