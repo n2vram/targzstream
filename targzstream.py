@@ -111,8 +111,6 @@ class TarFile(tarfile.TarFile):
     def __init__(self, name, mode='w', *args, **kwds):
         if mode[0] not in ('w', 'x', 'a'):
             raise ValueError("Mode '%s' is not allowed." % mode)
-        print("Calling tarfile.TarFile.__init__(name='%s', mode='%s', *%s, **%s) ..." %
-              (name, mode, args, kwds))
         super(TarFile, self).__init__(name, mode, *args, **kwds)
         self.__reset()
 
@@ -120,8 +118,6 @@ class TarFile(tarfile.TarFile):
     def open(cls, name, mode='r', fileobj=None, bufsize=tarfile.RECORDSIZE, **kwargs):
         if mode.startswith('r'):
             parent = tarfile.TarFile
-            print("%s(cls=%s, name='%s', mode='%s', fileobj=%s, bufsize=%s, %s)" %
-                  (parent.open, parent, name, mode, fileobj, bufsize, kwargs))
             return tarfile.TarFile.open(name=name, mode=mode, fileobj=fileobj,
                                         bufsize=bufsize, **kwargs)
         return cls(name, mode, **kwargs)
@@ -149,11 +145,9 @@ class TarFile(tarfile.TarFile):
         self.__currinfo = tinfo
         self.__writeheader()
         self.__stream = GzipStream(name, self.fileobj, mtime=mtime)
-        logging.debug("Wrote header(%s) between %04x - %04x", name, self.__location, self.fileobj.tell())
         return self.__stream
 
     def close_gz_file(self):
-        print("Entering TarFile.close_gz_file() ....")
         self.__currinfo.size = self.__stream.close()
         logging.debug("Closing GZ file: %s (%d)", self.__currinfo.name, self.__currinfo.size)
         end = self.fileobj.tell()
