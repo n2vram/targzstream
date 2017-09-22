@@ -1,7 +1,7 @@
 targzstream
 ===========
 
-Version: 1.0
+Version: 1.1
 
 Summary
 -------
@@ -19,8 +19,13 @@ Limitations
   this cannot work over a socket, nor presumably with a compressed tarfile.
   *Note: re-compressing contents is not very useful.*
 
-- The constructor does not support reading, use the `open()` method or else
-  the base class `tarfile.TarFile` constructor.
+- The "close_gz_file" method will be called when calling "close" on the
+  file stream.
+  *Note: close_gz_file() and close_file() are interchangeable.*
+
+- The constructor does not support reading, use the `open()` class method or
+  use the base class `tarfile.TarFile` constructor.
+
 
 Example Usage
 -------------
@@ -56,7 +61,7 @@ TODO
         with open(fname, 'rb') as fin:
             shutil.copyfileobj(fin, obj)
 
-- Wrap *add_gz_file* and *close_gz_file* as a context manager, allowing simply:
+- Wrap *add_gz_file* and *close_gz_file* as a context manager.
 
   *Done.*
 

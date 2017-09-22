@@ -22,6 +22,10 @@ Limitations
   file stream.
   *Note: close_gz_file() and close_file() are interchangeable.*
 
+- The constructor does not support reading, use the `open()` class method or
+  use the base class `tarfile.TarFile` constructor.
+
+
 Example Usage
 -------------
 
@@ -40,7 +44,6 @@ Example Usage
             st = os.stat(fname)
             with tarball.add_gz_file(name=fname + '.gz', mtime=st.st_mtime,
                                      uid=st.st_uid, gid=st.st_gid, mode=st.st_mode) as fout:
-
                 # Copy the data.
                 with open(fname, 'rb') as fin:
                     shutil.copyfileobj(fin, fout)
@@ -49,14 +52,6 @@ Example Usage
 TODO
 ----
 
-- Wrap *add_gz_file* and *close_gz_file* as a context manager, allowing simply:
-
-  *Done.*
-
-- Allow streaming uncompressed files, too.
-
-  *Done.*
-
 - Have *add_gz_file* handle the result of an *os.stat*.  Eg:
 
   .. code:: python
@@ -64,6 +59,14 @@ TODO
     with tarball.gz_file(name=fname + '.gz', stat=os.stat(fname)) as obj:
         with open(fname, 'rb') as fin:
             shutil.copyfileobj(fin, obj)
+
+- Wrap *add_gz_file* and *close_gz_file* as a context manager.
+
+  *Done.*
+
+- Allow streaming uncompressed files, too.
+
+  *Done.*
 """
 import gzip
 import logging
