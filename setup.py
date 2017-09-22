@@ -54,7 +54,7 @@ def do_setup(readme):
             'Topic :: Utilities',
         ],
         keywords=['tarfile', 'gzip', 'streaming'],
-        py_modules=[NAME, 'tests'],
+        py_modules=[NAME],
         download_url=(URL + '/archive/' + VERSION),
         platforms=['any'],
     )
