@@ -3,14 +3,13 @@
 from distutils.core import setup
 import os.path
 import re
-import sys
 
 import targzstream
 
 MODULE = targzstream
 
 NAME = MODULE.__name__
-VERSION =  MODULE.__version__
+VERSION = MODULE.__version__
 DOCSTRING = MODULE.__doc__
 DESCRIPTION = MODULE.__descr__
 
@@ -59,7 +58,6 @@ def do_setup(readme):
         download_url=(URL + '/archive/' + VERSION),
         platforms=['any'],
     )
-
 
 
 if os.path.isfile('README.in'):

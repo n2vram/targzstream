@@ -19,8 +19,8 @@ Limitations
   this cannot work over a socket, nor presumably with a compressed tarfile.
   *Note: re-compressing contents is not very useful.*
 
-- The "close_gz_file" method *must* be called when the data is finished, and
-  calling "close" on the *GzipStream* object is not sufficient.
+- The constructor does not support reading, use the `open()` method or else
+  the base class `tarfile.TarFile` constructor.
 
 Example Usage
 -------------
@@ -38,27 +38,15 @@ Example Usage
     with targzstream.TarFile(sys.argv[1], mode='w') as tarball:
         for fname in sys.argv[2:]:
             st = os.stat(fname)
-            obj = tarball.add_gz_file(name=fname + '.gz', mtime=st.st_mtime,
-                                      uid=st.st_uid, gid=st.st_gid, mode=st.st_mode)
-
-            # Copy the data.
-            with open(fname, 'rb') as fin:
-                shutil.copyfileobj(fin, obj)
-
-            # REMEMBER: close_gz_file() is required
-            tarball.close_gz_file()
+            with tarball.add_gz_file(name=fname + '.gz', mtime=st.st_mtime,
+                                     uid=st.st_uid, gid=st.st_gid, mode=st.st_mode) as fout:
+                # Copy the data.
+                with open(fname, 'rb') as fin:
+                    shutil.copyfileobj(fin, fout)
     # The end.
 
 TODO
 ----
-
-- Wrap *add_gz_file* and *close_gz_file* as a context manager, allowing simply:
-
-  .. code:: python
-
-    with tarball.gzstream(name=fname + '.gz', mtime=mtime, ...) as obj:
-        with open(fname, 'rb') as fin:
-            shutil.copyfileobj(fin, obj)
 
 - Have *add_gz_file* handle the result of an *os.stat*.  Eg:
 
@@ -67,4 +55,12 @@ TODO
     with tarball.gz_file(name=fname + '.gz', stat=os.stat(fname)) as obj:
         with open(fname, 'rb') as fin:
             shutil.copyfileobj(fin, obj)
+
+- Wrap *add_gz_file* and *close_gz_file* as a context manager, allowing simply:
+
+  *Done.*
+
+- Allow streaming uncompressed files, too.
+
+  *Done.*
 

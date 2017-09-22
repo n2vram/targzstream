@@ -5,10 +5,14 @@ import logging
 import os
 import pytest
 import random
+import sys
 import tarfile
+import zlib
 
 # Code under test:
 import targzstream
+
+V2 = sys.version_info.major == 2
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -41,6 +45,12 @@ def test_disallow_compression(tmpdir):
         with pytest.raises((OSError, IOError)) as raised:
             targzstream.TarFile.open(path, mode=mode)
         assert raised.value.errno == 2
+
+        with pytest.raises(ValueError) as raised:
+            targzstream.TarFile(path, mode=mode)
+        mesg = str(raised.value)
+        assert mesg.startswith('Mode')
+        assert 'is not allowed' in mesg
 
 
 def test_readback(tmpdir):
@@ -167,3 +177,61 @@ def test_readback(tmpdir):
     # Read it all back...
     verify(tarfile.open(str(tfile), 'r'))
     verify(tarfile.TarFile.open(str(tfile), 'r'))
+
+
+def test_closer(tmpdir):
+    """Test that closing the GzipStream is really a call to obj.close_gz_file()"""
+    base = tmpdir.mkdir("3")
+    tfile = base.join("test2.tar")
+    lines = []
+    setup = {True: ('fizz', 1234567890, 4176 if V2 else 4182,
+                    'This is \xe2\x89\xaa NOT COMPRESSED \xe2\x89\xab'),
+             False: ('bizz', 2345678901, 22027 if V2 else 22033,
+                     'This is \xe2\x89\xaa COMPRESSED \xe2\x89\xab')}
+
+    with targzstream.TarFile(str(tfile), mode='w') as tarball:
+        assert tarball._TarFile__stream is None
+        name, mtime, size, header = setup[True]
+        with tarball.add_gz_file(name, mtime=mtime) as stream:
+            assert isinstance(tarball._TarFile__stream, targzstream.GzipStream)
+            stream.write(header)
+            stream.write('\n')
+            for i in range(2000):
+                line = "Line %05d" % i
+                lines.append(line)
+                stream.write(line + '\n')
+
+        assert tarball._TarFile__stream is None
+        assert size == stream.size
+
+        name, mtime, size, header = setup[False]
+        with tarball.add_file(name, mtime=mtime) as stream:
+            assert isinstance(tarball._TarFile__stream, targzstream.GzipStream)
+            stream.write(header + '\t')
+            for line in lines:
+                stream.write(line)
+                stream.write('\t')
+
+        assert tarball._TarFile__stream is None
+        assert stream.size == size
+
+    assert tarball.closed
+
+    with tarfile.TarFile(str(tfile), mode='r') as tarball:
+        for num, member in enumerate(tarball):
+            print("Member<%s>: %s" % (type(member), member))
+            name, mtime, size, header = setup[num == 0]
+            assert member.name == name
+            assert member.mtime == mtime
+            assert member.size == size
+
+            io = tarball.extractfile(member)
+            data = io.read()
+            if num == 0:
+                data = zlib.decompress(data, 0x1F)
+            print("Data: \"\"\"%s\"\"\"" % data[:300])
+            flines = data.decode('utf8').split('\t' if num else '\n')
+            assert lines == flines[1:-1]
+            if hasattr(header, 'decode'):
+                header = header.decode('utf8')
+            assert header == flines[0]

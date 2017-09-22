@@ -18,8 +18,9 @@ Limitations
   this cannot work over a socket, nor presumably with a compressed tarfile.
   *Note: re-compressing contents is not very useful.*
 
-- The "close_gz_file" method *must* be called when the data is finished, and
-  calling "close" on the *GzipStream* object is not sufficient.
+- The "close_gz_file" method will be called when calling "close" on the
+  file stream.
+  *Note: close_gz_file() and close_file() are interchangeable.*
 
 Example Usage
 -------------
@@ -37,15 +38,12 @@ Example Usage
     with targzstream.TarFile(sys.argv[1], mode='w') as tarball:
         for fname in sys.argv[2:]:
             st = os.stat(fname)
-            obj = tarball.add_gz_file(name=fname + '.gz', mtime=st.st_mtime,
-                                      uid=st.st_uid, gid=st.st_gid, mode=st.st_mode)
+            with tarball.add_gz_file(name=fname + '.gz', mtime=st.st_mtime,
+                                     uid=st.st_uid, gid=st.st_gid, mode=st.st_mode) as fout:
 
-            # Copy the data.
-            with open(fname, 'rb') as fin:
-                shutil.copyfileobj(fin, obj)
-
-            # REMEMBER: close_gz_file() is required
-            tarball.close_gz_file()
+                # Copy the data.
+                with open(fname, 'rb') as fin:
+                    shutil.copyfileobj(fin, fout)
     # The end.
 
 TODO
@@ -53,11 +51,11 @@ TODO
 
 - Wrap *add_gz_file* and *close_gz_file* as a context manager, allowing simply:
 
-  .. code:: python
+  *Done.*
 
-    with tarball.gzstream(name=fname + '.gz', mtime=mtime, ...) as obj:
-        with open(fname, 'rb') as fin:
-            shutil.copyfileobj(fin, obj)
+- Allow streaming uncompressed files, too.
+
+  *Done.*
 
 - Have *add_gz_file* handle the result of an *os.stat*.  Eg:
 
@@ -73,38 +71,57 @@ import sys
 import tarfile
 import time
 
-__version__ = "1.0"
+__version__ = "1.1"
 __author__ = "NVRAM (nvram@users.sourceforge.net)"
-__date__ = "Sun Apr 16 00:43:13 MDT 2017"
+__date__ = "Fri Sep 21 22:14:23 MDT 2017"
 __credits__ = "NVRAM"
-__descr__ = ('An extension to tarfile to allow adding compressed-on-the-fly files to ' +
-             'a tarfile, allowing files too large to fit into memory or data that is ' +
-             'generated on the fly.  Note that the output file object must support ' +
-             '"seek()", hence must be a regular uncompressed tar file.')
+__descr__ = ('An extension to tarfile to allow adding files to a tarfile, without the ' +
+             'need to write to disk first.  It also allows data to be compressed as it ' +
+             'is added to the tarfile, for large files or data that might be generated ' +
+             'on the fly.  Note that the output file object must support "seek()", ' +
+             'hence the output must be an uncompressed tar file.  Currently, only ' +
+             'GZip is supported for compression.')
 
 _OLD_SCHOOL = sys.version_info.major == 2
 
 
 class GzipStream(object):
-    def __init__(self, name, fdes, level=9, mtime=None):
+    def __init__(self, name, fdes, onclose, level=9, mtime=None, encoding='utf-8'):
         self.fdes = fdes
+        self.onclose = onclose
+        self.encoding = encoding
         self.start = fdes.tell()
-        self.gzip = gzip.GzipFile(filename=name, compresslevel=level, mode='wb',
-                                  fileobj=fdes, mtime=mtime)
+        if level >= 0:
+            self.stream = gzip.GzipFile(filename=name, compresslevel=level, mode='wb',
+                                        fileobj=fdes, mtime=mtime)
+            self.compressed = True
+        else:
+            self.stream = fdes
+            self.compressed = False
 
     def write(self, data):
-        if isinstance(data, str) and not _OLD_SCHOOL:
-            data = data.encode()
-        self.gzip.write(data)
+        if not _OLD_SCHOOL and isinstance(data, str):
+            data = bytes(data.encode(self.encoding))
+        self.stream.write(data)
 
     def flush(self):
         pass
 
-    def close(self):
-        self.gzip.close()
+    def close(self, only=False):
+        if not only:
+            return self.onclose()
+        if self.compressed:
+            self.stream.close()
         self.end = self.fdes.tell()
         self.size = self.end - self.start
         return self.size
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        if type is None:
+            self.close()
 
 
 class TarFile(tarfile.TarFile):
@@ -117,7 +134,6 @@ class TarFile(tarfile.TarFile):
     @classmethod
     def open(cls, name, mode='r', fileobj=None, bufsize=tarfile.RECORDSIZE, **kwargs):
         if mode.startswith('r'):
-            parent = tarfile.TarFile
             return tarfile.TarFile.open(name=name, mode=mode, fileobj=fileobj,
                                         bufsize=bufsize, **kwargs)
         return cls(name, mode, **kwargs)
@@ -126,13 +142,24 @@ class TarFile(tarfile.TarFile):
         self.__stream = None
         self.__currinfo = None
         self.__location = None
+        self.__compressed = None
 
     def __writeheader(self):
         buff = self.__currinfo.tobuf(self.format, self.encoding)
         self.fileobj.write(buff)
 
+    def add_file(self, name, mtime, **stats):
+        logging.debug("Adding file: %s", name)
+        return self._do_add(name, False, mtime, stats)
+
+    def close_gz_file(self):
+        return self.close_file()
+
     def add_gz_file(self, name, mtime, **stats):
         logging.debug("Adding GZ file: %s", name)
+        return self._do_add(name, True, mtime, stats)
+
+    def _do_add(self, name, compress, mtime, stats):
         if self.__currinfo:
             self.close_gz_file()
         tinfo = tarfile.TarInfo(name=name)
@@ -144,12 +171,17 @@ class TarFile(tarfile.TarFile):
         self.__location = self.fileobj.tell()
         self.__currinfo = tinfo
         self.__writeheader()
-        self.__stream = GzipStream(name, self.fileobj, mtime=mtime)
+        self.__compressed = compress
+        self.__stream = GzipStream(name, self.fileobj, onclose=self.close_gz_file,
+                                   level=9 if compress else -1, mtime=mtime)
         return self.__stream
 
-    def close_gz_file(self):
-        self.__currinfo.size = self.__stream.close()
-        logging.debug("Closing GZ file: %s (%d)", self.__currinfo.name, self.__currinfo.size)
+    def close_file(self):
+        self.__stream.flush()
+        # Raw close on the GZ stream.
+        self.__currinfo.size = self.__stream.close(only=True)
+        logging.debug("Closing file: %s (%d)", self.__currinfo.name, self.__currinfo.size)
+
         end = self.fileobj.tell()
         _, extra = divmod(end, tarfile.BLOCKSIZE)
         padding = tarfile.BLOCKSIZE - extra
